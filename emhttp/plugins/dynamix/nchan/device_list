@@ -183,9 +183,9 @@ function array_offline(&$disk, $pool='') {
   $status = ['DISK_DSBL','DISK_INVALID','DISK_DSBL_NEW','DISK_WRONG'];
   $text = "<span class='red-text'><em>"._('All existing data on this device will be OVERWRITTEN when array is Started')."</em></span>";
   if (_var($disk,'type')=='Cache') {
-    if (!str_contains(_var($diks[$pool],'state'),'ERROR:')) {
-      if (_var($disks[$pool],'state')!='NEW_ARRAY') {
-        if (in_array(_var($disk,'status'),$status)) $warning = $text;
+    if (!str_contains(_var($disks[$pool],'state'),'ERROR:')) {
+      if (!empty(_var($disks[$pool],'uuid'))) {
+        if (in_array(_var($disk,'status'),$status) || _var($disk['status'])=='DISK_NEW') $warning = $text;
       }
     }
   } else {
@@ -362,8 +362,8 @@ function array_slots() {
 }
 function cache_slots($off,$pool,$min,$slots) {
   global $var, $disks;
-  $off  = $off && $min ? ' disabled' : '';
-$off = '';
+//  $off  = $off && $min ? ' disabled' : '';
+  $off = _var($disks[$pool],'fsType','auto')!='auto' && empty(_var($disks[$pool],'uuid')) ? ' disabled' : '';
   $max  = _var($var,'MAX_CACHESZ');
   $echo = [];
   $echo[] = "<form method='POST' action='/update.htm' target='progressFrame'>";
@@ -371,10 +371,10 @@ $off = '';
   $echo[] = "<input type='hidden' name='changeSlots' value='apply'>";
   $echo[] = "<input type='hidden' name='poolName' value='$pool'>";
   $echo[] = "<select class='narrow' name='poolSlots' onChange='devices.start();this.form.submit()'{$off}>";
-  if (_var($disks[$pool],'state')=='NEW_ARRAY' || str_contains(_var($diks[$pool],'state'),'NO_DEVICES')) {
-    $option = _('none');
-    $echo[] = "<option value='0'>$option</option>";
-  }
+//  if (_var($disks[$pool],'state')=='NEW_ARRAY' || str_contains(_var($diks[$pool],'state'),'NO_DEVICES')) {
+//    $option = _('none');
+//    $echo[] = "<option value='0'>$option</option>";
+//  }
   for ($n=$min; $n<=$max; $n++) {
     $selected = ($n==$slots) ? ' selected' : '';
     $echo[] = "<option value='$n'{$selected}>$n</option>";
@@ -507,7 +507,11 @@ while (true) {
       if ($zfsPool) {
         $current_subpools = array_filter($pools, function($element) use ($pool,$_tilde_) {return str_contains($element,"{$pool}{$_tilde_}");});
         $current_subpools_list = str_replace("{$pool}{$_tilde_}","", implode(',', $current_subpools));
-        $echo[$a][] = "<input type='button' value='"._('Add Subpool')."' class='subpool' onclick='addSubpoolPopup(\"$pool\",\"$current_subpools_list\")'".(count($current_subpools)<count($subpools)?'':' disabled').">";
+        if (!empty(_var($Cache[$pool],'uuid'))) {
+          $echo[$a][] = "<input type='button' value='"._('Add Subpool')."' class='subpool' onclick='addSubpoolPopup(\"$pool\",\"$current_subpools_list\")'".(count($current_subpools)<count($subpools)?'':' disabled').">";
+        } else {
+          $echo[$a][] = "<input type='button' value='"._('Add Subpool')."' class='subpool' disabled>";
+        }
       }
       $echo[$a][] = "</span></td><td></td></tr>";
     } else {

@@ -61,6 +61,11 @@ mkdir -p $CONFIG/shares
 mkdir -p $CONFIG/ssh/root
 mkdir -p $CONFIG/ssl/certs
 
+# Set default Docker backingfs type to native for existing installations
+if [[ -f "/boot/config/docker.cfg" ]]; then
+  grep -q "DOCKER_BACKINGFS=" /boot/config/docker.cfg || echo "DOCKER_BACKINGFS=\"native\"" >> /boot/config/docker.cfg
+fi
+
 # upgrade network configuration (if needed) and (re)generates our welcome text
 if [[ -x /usr/local/sbin/create_network_ini ]]; then
   /usr/local/sbin/create_network_ini init &>/dev/null &

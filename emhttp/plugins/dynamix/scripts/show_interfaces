@@ -9,10 +9,10 @@ CALLER="show"
 if check && [[ $1 == ip ]]; then
   IP=()
   for NET in $BIND; do
-    IP+=("$NET#[$(echo $(show dev $NET)|xargs)]")
+    IP+=("$NET [$(echo $(show dev $NET)|xargs)]")
   done
   BIND=${IP[@]}
 fi
 
 # return list
-echo ${BIND// /#}
+echo $BIND

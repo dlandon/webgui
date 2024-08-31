@@ -344,6 +344,29 @@ function my_mkdir($dirname,$permissions = 0777,$recursive = false,$own = "nobody
   chgrp($dirname, $grp);
   return($rtncode);
 }
+function my_rmdir($dirname) {
+  if (!is_dir($dirname)) return(false);
+  if (strpos($dirname,'/mnt/user/')===0) {
+    $realdisk = trim(shell_exec("getfattr --absolute-names --only-values -n system.LOCATION ".escapeshellarg($dirname)." 2>/dev/null"));
+    if (!empty($realdisk)) {
+      $dirname = str_replace('/mnt/user/', "/mnt/$realdisk/", $dirname);
+    }
+  }
+  $fstype = trim(shell_exec(" stat -f -c '%T' $dirname"));
+  $rtncode = false;
+  switch ($fstype) {
+    case "zfs":
+      $zfsoutput = array();
+      $zfsdataset = trim(shell_exec("zfs list -H -o name  \"$dirname\"")) ;
+      exec("zfs destroy \"$zfsdataset\"",$zfsoutput,$rtncode);
+      break;
+    case "btrfs":
+    default:
+      $rtncode = rmdir($dirname);
+      break;
+  }
+  return($rtncode);
+}
 function get_realvolume($path) {
   if (strpos($path,"/mnt/user/",0) === 0) 
     $reallocation = trim(shell_exec("getfattr --absolute-names --only-values -n system.LOCATION ".escapeshellarg($path)." 2>/dev/null")); 

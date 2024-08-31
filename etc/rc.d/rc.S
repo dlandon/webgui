@@ -76,6 +76,7 @@ done
 # LimeTech - poll for device with $UNRAIDLABEL present, with 30-sec timeout
 # this serves to synchronize this script with USB subsystem
 abort() {
+  /bin/umount -a
   read -p "$1 - press ENTER key to reboot..."
   /bin/echo
   /sbin/reboot
@@ -103,7 +104,12 @@ elif /sbin/blkid -s TYPE $DEVICE | /bin/grep -q "xfs" ; then
   /sbin/mount -v -t xfs -o auto,rw,noatime,nodiratime,discard $DEVICE /boot || abort "cannot mount $DEVICE"
 else
   /bin/echo "Checking $DEVICE ..."
-  /sbin/fsck.fat -a -w $DEVICE 2>/dev/null
+  FSCK=$(/sbin/fsck.fat -a -w $DEVICE 2>/dev/null)
+  if [[ "$FSCK" == *"differences between boot sector and its backup"* ]] ; then
+    /sbin/fsck.fat -w $DEVICE 2>/dev/null <<< "1"
+  else
+    echo "$FSCK"
+  fi
   /sbin/mount -v -t vfat -o auto,rw,flush,noatime,nodiratime,dmask=77,fmask=177,shortname=mixed $DEVICE /boot || abort "cannot mount $DEVICE"
 fi
 
@@ -161,6 +167,7 @@ else
   /sbin/mount -w -v -n -o remount /
   RETVAL=$?
   [[ $RETVAL -gt 0 ]] && abort "failed to remount $UNRAIDROOT r/w with return value $RETVAL"
+  [[ ! -f /etc/rc.d/rc.S.cont ]] && abort "unable to continue - you must remove 'root=$UNRAIDROOT' from syslinux.cfg"
 fi
 
 # set permissions for non vfat boot on /boot

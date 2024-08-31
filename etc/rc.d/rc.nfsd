@@ -123,8 +123,8 @@ nfsd_restart(){
 }
 
 nfsd_reload(){
-  # restart without info
-  nfsd_restart &>/dev/null
+  # reload without info
+  $EXPORTFS -r &>/dev/null
 }
 
 nfsd_update(){

@@ -50,6 +50,12 @@ $pools = array_filter($pools, function($pool) {
 	return !isSubpool($pool);
 });
 
+/* Check for cachePool2 only which is a situation where the primary device is the cachePool2 device. */
+if ((! $share['cachePool']) && ($share['cachePool2'])) {
+	$share['cachePool']		= $share['cachePool2'];
+	$share['cachePool2']	= "";
+}
+
 /* Check for non existent pool device. */
 if ($share['cachePool'] && !in_array($share['cachePool'], $pools)) {
 	$poolDefined = false;
@@ -61,16 +67,16 @@ if ($share['cachePool'] && !in_array($share['cachePool'], $pools)) {
 
 /* Check for pool 2 (or array) being defined. */
 if ((($share['useCache'] == "yes") || ($share['useCache'] == "prefer")) && ($poolsOnly) && (!$share['cachePool2'])) {
-	$poolDefined2 = false;
-	$share['useCache'] = "yes";
+	$poolDefined2 = true;
+	$share['useCache'] = "only";
 } else if ($share['cachePool2']) {
 	$poolDefined2 = in_array($share['cachePool2'], $pools);
 } else {
 	$poolDefined2 = true;
 }
 
-$cachePoolCapitalized = ucfirst($share['cachePool']);
-$cachePoolCapitalized2 = $share['cachePool2'] ? ucfirst($share['cachePool2']) : _("Array");
+$cachePoolCapitalized = compress(my_disk($share['cachePool'],$display['raw']));
+$cachePoolCapitalized2 = $share['cachePool2'] ? compress(my_disk($share['cachePool2'],$display['raw'])) : _("Array");
 
 function globalInclude($name) {
   global $var;

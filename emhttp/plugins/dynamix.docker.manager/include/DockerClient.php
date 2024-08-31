@@ -49,11 +49,11 @@ $port = file_exists('/sys/class/net/br0') ? 'BR0' : (file_exists('/sys/class/net
 // Docker configuration file - guaranteed to exist
 $docker_cfgfile = '/boot/config/docker.cfg';
 if (file_exists($docker_cfgfile)) {
-  exec("grep -Pom2 '_SUBNET_|_{$port}(_[0-9]+)?=' $docker_cfgfile",$cfg);
-  if (isset($cfg[0]) && $cfg[0]=='_SUBNET_' && empty($cfg[1])) { 
-    # interface has changed, update configuration
-    exec("sed -ri 's/_(BR0|BOND0|ETH0)(_[0-9]+)?=/_{$port}\\2=/' $docker_cfgfile");
-  }
+	exec("grep -Pom2 '_SUBNET_|_{$port}(_[0-9]+)?=' $docker_cfgfile",$cfg);
+	if (isset($cfg[0]) && $cfg[0]=='_SUBNET_' && empty($cfg[1])) {
+		# interface has changed, update configuration
+		exec("sed -ri 's/_(BR0|BOND0|ETH0)(_[0-9]+)?=/_{$port}\\2=/' $docker_cfgfile");
+	}
 }
 
 $defaults = (array)@parse_ini_file("$docroot/plugins/dynamix.docker.manager/default.cfg");
@@ -255,7 +255,7 @@ class DockerTemplates {
 			$doc = new DOMDocument();
 			$doc->load($file['path']);
 			if ($name) {
-				if ($doc->getElementsByTagName('Name')->item(0)->nodeValue !== $name) continue;
+				if (@$doc->getElementsByTagName('Name')->item(0)->nodeValue !== $name) continue;
 			}
 			$TemplateRepository = DockerUtil::ensureImageTag($doc->getElementsByTagName('Repository')->item(0)->nodeValue??'');
 			if ($TemplateRepository && $TemplateRepository==$Repository) {
@@ -293,7 +293,7 @@ class DockerTemplates {
 	}
 
 	public function getAllInfo($reload=false,$com=true,$communityApplications=false) {
-		global $dockerManPaths, $host;
+		global $driver, $dockerManPaths, $host;
 		$DockerClient = new DockerClient();
 		$DockerUpdate = new DockerUpdate();
 		//$DockerUpdate->verbose = $this->verbose;
@@ -307,9 +307,8 @@ class DockerTemplates {
 			$tmp['paused'] = $ct['Paused'];
 			$tmp['autostart'] = in_array($name,$autoStart);
 			$tmp['cpuset'] = $ct['CPUset'];
-			$tmp['url'] = $tmp['url'] ?? '';
+			$tmp['url'] = $ct['Url'] ?? $tmp['url'] ?? '';
 			// read docker label for WebUI & Icon
-			if (isset($ct['Url']) && !$tmp['url']) $tmp['url'] = $ct['Url'];
 			if (isset($ct['Icon'])) $tmp['icon'] = $ct['Icon'];
 			if (isset($ct['Shell'])) $tmp['shell'] = $ct['Shell'];
 			if (!$communityApplications) {
@@ -322,8 +321,18 @@ class DockerTemplates {
 					// non-templated webui, user specified
 					$tmp['url'] = $webui;
 				} else {
-					$ip = ($ct['NetworkMode']=='host'||_var($port,'NAT')) ? $host : _var($port,'IP');
+					if ($ct['NetworkMode']=='host') {
+						$ip = $host;
+					} elseif (isset($driver[$ct['NetworkMode']]) && ($driver[$ct['NetworkMode']] == 'ipvlan' || $driver[$ct['NetworkMode']] == 'macvlan')) {
+						$ip = reset($ct['Networks'])['IPAddress'];
+					} elseif (!is_null(_var($port,'PublicPort'))) {
+						$ip = $host;
+					} else {
+						$ip = _var($port,'IP');
+					}
 					$tmp['url'] = $ip ? (strpos($tmp['url'],$ip)!==false ? $tmp['url'] : $this->getControlURL($ct, $ip, $tmp['url'])) : $tmp['url'];
+					if (strpos($ct['NetworkMode'], 'container:') === 0)
+					  $tmp['url'] = '';
 				}
 				if ( ($tmp['shell'] ?? false) == false )
 					$tmp['shell'] = $this->getTemplateValue($image, 'Shell');
@@ -338,8 +347,12 @@ class DockerTemplates {
 				$tmp['updated'] = var_export($DockerUpdate->getUpdateStatus($image),true);
 			}
 			if (!$com) $tmp['updated'] = 'undef';
-			if (empty($tmp['template']) || $reload) $tmp['template'] = $this->getUserTemplate($name);
-			if ($reload) $DockerUpdate->updateUserTemplate($name);
+			if ($ct['Manager'] !== 'dockerman')
+				$tmp['template'] = null;
+			else if (empty($tmp['template']) || $reload) {
+				$tmp['template'] = $this->getUserTemplate($name);
+				if ($reload) $DockerUpdate->updateUserTemplate($name);
+			}
 			//$this->debug("\n$name");
 			//foreach ($tmp as $c => $d) $this->debug(sprintf('   %-10s: %s', $c, $d));
 		}
@@ -897,7 +910,7 @@ class DockerClient {
 	}
 
 	public function getDockerContainers() {
-		global $driver;
+		global $driver, $host;
 		// Return cached values
 		if (is_array($this::$containersCache)) return $this::$containersCache;
 		$this::$containersCache = [];
@@ -922,23 +935,48 @@ class DockerClient {
 			$c['Icon']        = $info['Config']['Labels']['net.unraid.docker.icon'] ?? false;
 			$c['Url']         = $info['Config']['Labels']['net.unraid.docker.webui'] ?? false;
 			$c['Shell']         = $info['Config']['Labels']['net.unraid.docker.shell'] ?? false;
+			$c['Manager']         = $info['Config']['Labels']['net.unraid.docker.managed'] ?? false;
 			$c['Ports']       = [];
+			$c['Networks']	  = [];
 			if ($id) $c['NetworkMode'] = $net.str_replace('/',':',DockerUtil::ctMap($id)?:'/???');
 			if (isset($driver[$c['NetworkMode']])) {
 				if ($driver[$c['NetworkMode']]=='bridge') {
 					$ports = &$info['HostConfig']['PortBindings'];
-					$nat = true;
+				} elseif ($driver[$c['NetworkMode']]=='host') {
+					$c['Ports']['host'] = ['host' => ''];
+				} elseif ($driver[$c['NetworkMode']]=='ipvlan' || $driver[$c['NetworkMode']]=='macvlan') {
+					$i = $ct['NetworkSettings']['Networks'][$c['NetworkMode']]['IPAddress'];
+					$c['Ports']['vlan'] = ["$i" => $i];
 				} else {
 					$ports = &$info['Config']['ExposedPorts'];
-					$nat = false;
 				}
-				$ip = $ct['NetworkSettings']['Networks'][$c['NetworkMode']]['IPAddress'];
+			} else if (!$id) {
+				$c['NetworkMode'] = DockerUtil::ctMap($c['NetworkMode']);
+				$ports = &$info['Config']['ExposedPorts'];
 			}
+			foreach($ct['NetworkSettings']['Networks'] as $netName => $netVals) {
+				$i = $c['NetworkMode']=='host' ? $host : $netVals['IPAddress'];
+				$c['Networks'][$netName] = [ 'IPAddress' => $i ];
+				if ($driver[$netName]=='ipvlan' || $driver[$netName]=='macvlan') {
+					if (!isset($c['Ports']['vlan'])) $c['Ports']['vlan'] = [];
+					$c['Ports']['vlan']["$i"] = $i;
+				}
+			}
+			$ip = $c['NetworkMode']=='host' ? $host : $ct['NetworkSettings']['Networks'][$c['NetworkMode']]['IPAddress'] ?? null;
+			$c['Networks'][$c['NetworkMode']] = [ 'IPAddress' => $ip ];
 			$ports = (isset($ports) && is_array($ports)) ? $ports : [];
 			foreach ($ports as $port => $value) {
+				if (!isset($info['HostConfig']['PortBindings'][$port])) {
+					continue;
+				}
 				[$PrivatePort, $Type] = array_pad(explode('/', $port),2,'');
-				$c['Ports'][] = ['IP' => $ip, 'PrivatePort' => $PrivatePort, 'PublicPort' => $nat ? $value[0]['HostPort'] : $PrivatePort, 'NAT' => $nat, 'Type' => $Type];
+				$PublicPort = $info['HostConfig']['PortBindings']["$port"][0]['HostPort'] ?: null;
+				$nat = ($driver[$c['NetworkMode']]=='bridge');
+				if (array_key_exists($PrivatePort, $c['Ports']) && $Type != $c['Ports'][$PrivatePort]['Type'])
+					$Type = $c['Ports'][$PrivatePort]['Type'] . '/' . $Type;
+				$c['Ports'][$PrivatePort] = ['IP' => $ip, 'PrivatePort' => $PrivatePort, 'PublicPort' => $PublicPort, 'NAT' => $nat, 'Type' => $Type, 'Driver' => $driver[$c['NetworkMode']]];
 			}
+			ksort($c['Ports']);
 			$this::$containersCache[] = $c;
 		}
 		array_multisort(array_column($this::$containersCache,'Name'), SORT_NATURAL|SORT_FLAG_CASE, $this::$containersCache);

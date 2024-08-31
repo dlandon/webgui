@@ -103,6 +103,9 @@ function base_net($route) {
   return substr(explode('/',$route)[0],0,-2);
 }
 $bgcolor = strstr('white,azure',$display['theme']) ? '#f2f2f2' : '#1c1c1c';
+
+//Check if docker.cfg not exists
+$no_dockercfg = !is_file('/boot/config/docker.cfg');
 ?>
 <link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.filetree.css')?>">
 <link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
@@ -188,6 +191,23 @@ _(Docker directory)_:
 :docker_vdisk_directory_help:
 
 </div>
+
+<div markdown="1" id="backingfs_type" style="display:none">
+_(Docker storage driver)_:
+: <select id="DOCKER_BACKINGFS" name="DOCKER_BACKINGFS" onchange="updateBackingFS(this.value)">
+  <?=mk_option(_var($dockercfg,'DOCKER_BACKINGFS'), 'native', _('native'))?>
+  <?=mk_option(_var($dockercfg,'DOCKER_BACKINGFS'), 'overlay2', _('overlay2'))?>
+  </select>
+  <?if ($var['fsState'] != "Started"):?>
+  <span id="WARNING_BACKINGFS" style="display:none;"><i class="fa fa-warning icon warning"></i>_(Only modify if this is a new installation since this can lead to unwanted behaviour!)_</span>
+  <?elseif (is_dir(_var($dockercfg,'DOCKER_IMAGE_FILE'))):?>
+  <span id="WARNING_BACKINGFS" style="display:none;"><i class="fa fa-warning icon warning"></i>_(Switching the Storage Driver requires to delete and rebuild the Docker directory manually!)_</span>
+  <?endif;?>
+
+:docker_storage_driver_help:
+
+</div>
+
 _(Default appdata storage location)_:
 : <input type="text" id="DOCKER_APP_CONFIG_PATH" name="DOCKER_APP_CONFIG_PATH" autocomplete="off" spellcheck="false" value="<?=_var($dockercfg,'DOCKER_APP_CONFIG_PATH')?>" placeholder="_(e.g.)_ /mnt/user/appdata/" data-pickfilter="HIDE_FILES_FILTER" data-pickroot="/mnt" data-pickfolders="true" pattern="^[^\\]*/$">
   <?if ($var['fsState'] != "Started"):?>
@@ -418,6 +438,7 @@ _(IPv6 custom network on interface)_ <?=$network?> (_(optional)_):
 </div>
 <?else: /* DOCKER STARTED */?>
 
+
 _(Docker version)_:
 : <?$arrInfo = $DockerClient->getInfo(); echo $arrInfo['Version']?>
 
@@ -432,6 +453,11 @@ _(Docker directory)_:
 <?endif;?>
 
 :docker_vdisk_location_active_help:
+
+_(Docker storage driver)_:
+: <?=_var($dockercfg,'DOCKER_BACKINGFS')?>
+
+:docker_storage_driver_active_help:
 
 _(Default appdata storage location)_:
 : <?=_var($dockercfg,'DOCKER_APP_CONFIG_PATH')?>
@@ -592,6 +618,9 @@ function prepareDocker(form) {
   $(form).find('input[name="DOCKER_IMAGE_FILE"]').val($('#DOCKER_IMAGE_TYPE').val()=='folder' ? $("#DOCKER_IMAGE_FILE2").val() : $("#DOCKER_IMAGE_FILE1").val());
   $("#DOCKER_IMAGE_FILE1").prop('disabled',true);
   $("#DOCKER_IMAGE_FILE2").prop('disabled',true);
+  <?if ($no_dockercfg):?>
+    $(form).find('input[name="DOCKER_BACKINGFS"]').val($('#DOCKER_IMAGE_TYPE').val()=='folder' ? $("#DOCKER_BACKINGFS").val() : $("#DOCKER_BACKINGFS").val('native'));
+  <?endif;?>
 <?endif;?>
   $(form).find('input:hidden[name^="DOCKER_DHCP_"]').each(function(){
     var id = '#'+$(this).attr('name')+'_';
@@ -860,6 +889,7 @@ function btrfsScrub(path) {
 function updateLocation(val) {
   var content1 = $("#DOCKER_IMAGE_FILE1");
   var content2 = $("#DOCKER_IMAGE_FILE2");
+  var dropdown = $("#DOCKER_BACKINGFS");
   switch (val) {
   case 'xfs':
     var path = content2.val().split('/');
@@ -867,15 +897,18 @@ function updateLocation(val) {
     content1.val((path.join('/') + '/docker-xfs.img'));
     $('#vdisk_file').show('slow');
     $('#vdisk_dir').hide('slow');
+    $('#backingfs_type').hide();
     content1.prop('disabled',false).trigger('change');
     content2.prop('disabled',true);
+    dropdown.val('native');
     break;
   case 'folder':
     var path = content2.val().split('/');
     if (path[path.length-1]=='') path.splice(-2,2); else path.splice(-1,1);
-    content2.val(path.join('/') + '/docker/');
+    content2.val(path.join('/'));
     $('#vdisk_file').hide('slow');
     $('#vdisk_dir').show('slow');
+    $('#backingfs_type').show('slow');
     content1.prop('disabled',true);
     content2.prop('disabled',false).trigger('change');
     break;
@@ -885,9 +918,21 @@ function updateLocation(val) {
     content1.val((path.join('/') + '/docker.img'));
     $('#vdisk_file').show('slow');
     $('#vdisk_dir').hide('slow');
+    $('#backingfs_type').hide();
     content1.prop('disabled',false).trigger('change');
     content2.prop('disabled',true);
+    dropdown.val('native');
     break;
+  }
+}
+function updateBackingFS(val) {
+  var backingfs = "<?= _var($dockercfg,'DOCKER_BACKINGFS') ?>";
+  var warning = document.getElementById("WARNING_BACKINGFS");
+  var checkbox = $(".deleteCheckbox");
+  if (val !== backingfs) {
+    warning.style.display = "inline";
+  } else {
+    warning.style.display = "none";
   }
 }
 function checkbox_state(value) {
@@ -897,6 +942,7 @@ $(function() {
 <?if ($DockerStopped):?>
   if ($('#DOCKER_IMAGE_TYPE').val()=='folder') {
     $('#vdisk_dir').show();
+    $('#backingfs_type').show();
     checkbox_state($("#DOCKER_IMAGE_FILE2").val());
     $("#DOCKER_IMAGE_FILE2").prop('disabled',false);
   } else {

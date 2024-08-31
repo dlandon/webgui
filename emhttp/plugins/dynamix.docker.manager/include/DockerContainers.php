@@ -87,11 +87,30 @@ foreach ($containers as $ct) {
   $icon = $info['icon'] ?: '/plugins/dynamix.docker.manager/images/question.png';
   $image = substr($icon,-4)=='.png' ? "<img src='$icon?".filemtime("$docroot{$info['icon']}")."' class='img' onerror=this.src='/plugins/dynamix.docker.manager/images/question.png';>" : (substr($icon,0,5)=='icon-' ? "<i class='$icon img'></i>" : "<i class='fa fa-$icon img'></i>");
   $wait = var_split($autostart[array_search($name,$names)]??'',1);
-  $ports = [];
-  foreach ($ct['Ports'] as $port) {
-    $intern = $running ? ($ct['NetworkMode']=='host' ? $host : _var($port,'IP')) : $null;
-    $extern = $running ? (_var($port,'NAT') ? $host : $intern) : $null;
-    $ports[] = sprintf('%s:%s/%s<i class="fa fa-arrows-h" style="margin:0 6px"></i>%s:%s', $intern, _var($port,'PrivatePort'), strtoupper(_var($port,'Type')), $extern, _var($port,'PublicPort'));
+  $networks = [];
+  $network_ips = [];
+  $ports_internal = [];
+  $ports_external = [];
+  if (isset($ct['Ports']['vlan'])) {
+    foreach ($ct['Ports']['vlan'] as $i)
+      $ports_external[] = sprintf('%s', $i);
+    $ports_internal[0] = sprintf('%s', 'all');
+  }
+  foreach($ct['Networks'] as $netName => $netVals) {
+    $networks[] = $netName;
+    $network_ips[] = $running ? $netVals['IPAddress'] : null;
+
+    if (isset($ct['Networks']['host'])) {
+      $ports_external[] = sprintf('%s', $netVals['IPAddress']);
+      $ports_internal[0] = sprintf('%s', 'all');
+    } else if (!isset($ct['Ports']['vlan']) || strpos($ct['NetworkMode'], 'container:') != 0) {
+      foreach ($ct['Ports'] as $port) {
+        if (_var($port,'PublicPort') && _var($port,'Driver') == 'bridge')
+          $ports_external[] = sprintf('%s:%s', $host, strtoupper(_var($port,'PublicPort')));
+        if ((!isset($ct['Networks']['host'])) || (!isset($ct['Networks']['vlan'])))
+          $ports_internal[] = sprintf('%s:%s', _var($port,'PrivatePort'), strtoupper(_var($port,'Type')));
+      }
+    }
   }
   $paths = [];
   $ct['Volumes'] = is_array($ct['Volumes']) ? $ct['Volumes'] : [];
@@ -141,8 +160,10 @@ foreach ($containers as $ct) {
       break;
   }
   echo "<div class='advanced'><i class='fa fa-info-circle fa-fw'></i> ".compress(_($version),12,0)."</div></td>";
-  echo "<td>{$ct['NetworkMode']}</td>";
-  echo "<td style='white-space:nowrap'><span class='docker_readmore'>".implode('<br>',$ports)."</span></td>";
+  echo "<td style='white-space:nowrap'><span class='docker_readmore'> ".implode('<br>',$networks)."</span></td>";
+  echo "<td style='white-space:nowrap'><span class='docker_readmore'> ".implode('<br>',$network_ips)."</span></td>";
+  echo "<td style='white-space:nowrap'><span class='docker_readmore'>".implode('<br>',$ports_internal)."</span></td>";
+  echo "<td style='white-space:nowrap'><span class='docker_readmore'>".implode('<br>',$ports_external)."</span></td>";
   echo "<td style='word-break:break-all'><span class='docker_readmore'>".implode('<br>',$paths)."</span></td>";
   echo "<td class='advanced'><span class='cpu-$id'>0%</span><div class='usage-disk mm'><span id='cpu-$id' style='width:0'></span><span></span></div>";
   echo "<br><span class='mem-$id'>0 / 0</span></td>";
@@ -162,3 +183,4 @@ foreach ($images as $image) {
 }
 echo "\0".implode($docker)."\0".(pgrep('rc.docker')!==false ? 1:0);
 ?>
+

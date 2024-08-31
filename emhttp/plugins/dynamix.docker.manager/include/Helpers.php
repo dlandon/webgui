@@ -515,9 +515,15 @@ function getAllocations() {
     $nat = $ip = false;
     $list['Name'] = $ct['Name'];
     foreach ($ct['Ports'] as $tmp) {
-      $nat = $tmp['NAT'];
-      $ip = $tmp['IP'];
-      $port[] = $tmp['PublicPort'];
+      if (isset($tmp['NAT'])) {
+        $nat = $tmp['NAT'];
+      }
+      if (isset($tmp['IP'])) {
+        $ip = $tmp['IP'];
+      }
+      if (isset($tmp['PublicPort'])) {
+        $port[] = $tmp['PublicPort'];
+      }
     }
     sort($port);
     $ip = $ct['NetworkMode']=='host'||$nat ? $host : ($ip ?: DockerUtil::myIP($ct['Name']) ?: '0.0.0.0');

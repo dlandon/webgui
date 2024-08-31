@@ -489,6 +489,7 @@ $(function() {
 <input type="button" onclick="stopAll()" value="_(Stop All)_" style="display:none">
 
 <div id="dialogWindow"></div>
+<div id="iframe-popup"></div>
 
 <div id="templateISO" class="template">
 <dl>

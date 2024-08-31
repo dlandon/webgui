@@ -65,6 +65,7 @@ samba_settings(){
     else
       echo "local master = No" >>$CONF
     fi
+    echo "nmbd bind explicit broadcast = no" >> $CONF
   else
     echo "disable netbios = yes" >>$CONF
     echo "server min protocol = SMB2" >>$CONF
