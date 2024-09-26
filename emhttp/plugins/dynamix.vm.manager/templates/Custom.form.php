@@ -317,6 +317,18 @@
 	}
 	if ($usertemplate == 1) unset($arrConfig['domain']['uuid']);
 	$xml2 = build_xml_templates($strXML);
+	#disable rename  if snapshots exist
+	$snapshots = getvmsnapshots($arrConfig['domain']['name']) ;
+	if ($snapshots != null && count($snapshots) && !$boolNew)  
+	{
+		$snaprenamehidden = "";
+		$namedisable = "disabled";
+		$snapcount = count($snapshots);
+	} else {
+		$snaprenamehidden = "hidden";
+		$namedisable = "";
+		$snapcount = "0";
+	};
 ?>
 
 <link rel="stylesheet" href="<?autov('/plugins/dynamix.vm.manager/scripts/codemirror/lib/codemirror.css')?>">
@@ -336,10 +348,12 @@
 <input type="hidden" name="domain[memoryBacking]" id="domain_memorybacking" value="<?=htmlspecialchars($arrConfig['domain']['memoryBacking'])?>">
 
 	<table>
-	<tr><td></td><td><span hidden id="zfs-name" class="orange-text"><i class="fa fa-warning"></i> _(Name contains invalid characters or does not start with an alphanumberic for a ZFS storage location<br>Only these special characters are valid Underscore (_) Hyphen (-) Colon (:) Period (.))_</span></td></tr>
+	<tr><td></td><td>
+		<span <?=$snaprenamehidden?> id="snap-rename" class="orange-text"><i class="fa fa-warning"></i> _(Rename disabled, <?=$snapcount?> snapshot(s) exists.)_</span>
+		<span hidden id="zfs-name" class="orange-text"><i class="fa fa-warning"></i> _(Name contains invalid characters or does not start with an alphanumberic for a ZFS storage location<br>Only these special characters are valid Underscore (_) Hyphen (-) Colon (:) Period (.))_</span></td></tr>
 		<tr>
 			<td>_(Name)_:</td>
-			<td><input type="text" name="domain[name]" id="domain_name" oninput="checkName(this.value)" class="textTemplate" title="_(Name of virtual machine)_" placeholder="_(e.g.)_ _(My Workstation)_" value="<?=htmlspecialchars($arrConfig['domain']['name'])?>" required /></td>
+			<td><input <?=$namedisable?> type="text" name="domain[name]" id="domain_name" oninput="checkName(this.value)" class="textTemplate" title="_(Name of virtual machine)_" placeholder="_(e.g.)_ _(My Workstation)_" value="<?=htmlspecialchars($arrConfig['domain']['name'])?>" required /></td>
 			<td><textarea class="xml" id="xmlname" rows=1 disabled ><?=htmlspecialchars($xml2['name'])."\n".htmlspecialchars($xml2['uuid'])."\n".htmlspecialchars($xml2['metadata'])?></textarea></td>
 		</tr>
 	</table>

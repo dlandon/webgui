@@ -40,7 +40,11 @@ function postToXML($post, $setOwnership=false) {
   $xml->Name               = xml_encode(preg_replace('/\s+/', '', $post['contName']));
   $xml->Repository         = xml_encode(trim($post['contRepository']));
   $xml->Registry           = xml_encode(trim($post['contRegistry']));
-  $xml->Network            = xml_encode($post['contNetwork']);
+  if (!empty(trim($post['netCONT']))) {
+    $xml->Network          = xml_encode($post['contNetwork'].':'.$post['netCONT']);
+  } else {
+    $xml->Network          = xml_encode($post['contNetwork']);
+  }
   $xml->MyIP               = xml_encode($post['contMyIP']);
   $xml->Shell              = xml_encode($post['contShell']);
   $xml->Privileged         = strtolower($post['contPrivileged']??'')=='on' ? 'true' : 'false';
@@ -132,7 +136,11 @@ function xmlToVar($xml) {
     $out['Network'] = xml_decode($xml->Networking->Mode);
   }
   // check if network exists
-  if (!key_exists($out['Network'],$subnet)) $out['Network'] = 'none';
+  if (preg_match('/^container:(.*)/', $out['Network'])) {
+    $out['Network'] = $out['Network'];
+  } elseif (!key_exists($out['Network'],$subnet)) {
+    $out['Network'] = 'none';
+  }
   // V1 compatibility
   if ($xml['version'] != '2') {
     if (isset($xml->Description)) {
@@ -241,7 +249,11 @@ function xmlToCommand($xml, $create_paths=false) {
   $xml           = xmlToVar($xml);
   $cmdName       = strlen($xml['Name']) ? '--name='.escapeshellarg($xml['Name']) : '';
   $cmdPrivileged = strtolower($xml['Privileged'])=='true' ? '--privileged=true' : '';
-  $cmdNetwork    = preg_match('/\-\-net(work)?=/',$xml['ExtraParams']) ? "" : '--net='.escapeshellarg(strtolower($xml['Network']));
+  if (preg_match('/^container:(.*)/', $xml['Network'])) {
+    $cmdNetwork  = preg_match('/\-\-net(work)?=/',$xml['ExtraParams']) ? "" : '--net='.escapeshellarg($xml['Network']);
+  } else {
+    $cmdNetwork  = preg_match('/\-\-net(work)?=/',$xml['ExtraParams']) ? "" : '--net='.escapeshellarg(strtolower($xml['Network']));
+  }
   $cmdMyIP       = '';
   foreach (explode(' ',str_replace(',',' ',$xml['MyIP'])) as $myIP) if ($myIP) $cmdMyIP .= (strpos($myIP,':')?'--ip6=':'--ip=').escapeshellarg($myIP).' ';
   $cmdCPUset     = strlen($xml['CPUset']) ? '--cpuset-cpus='.escapeshellarg($xml['CPUset']) : '';

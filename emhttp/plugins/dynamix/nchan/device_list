@@ -184,7 +184,8 @@ function array_offline(&$disk, $pool='') {
   $text = "<span class='red-text'><em>"._('All existing data on this device will be OVERWRITTEN when array is Started')."</em></span>";
   if (_var($disk,'type')=='Cache') {
     if (!str_contains(_var($disks[$pool],'state'),'ERROR:')) {
-      if (!empty(_var($disks[$pool],'uuid'))) {
+      $_pool = (strpos($pool, '~') !== false) ? substr($pool, 0, strpos($pool, '~')) : $pool;
+      if (!empty(_var($disks[$_pool],'uuid'))) {
         if (in_array(_var($disk,'status'),$status) || _var($disk['status'])=='DISK_NEW') $warning = $text;
       }
     }
@@ -507,11 +508,7 @@ while (true) {
       if ($zfsPool) {
         $current_subpools = array_filter($pools, function($element) use ($pool,$_tilde_) {return str_contains($element,"{$pool}{$_tilde_}");});
         $current_subpools_list = str_replace("{$pool}{$_tilde_}","", implode(',', $current_subpools));
-        if (!empty(_var($Cache[$pool],'uuid'))) {
-          $echo[$a][] = "<input type='button' value='"._('Add Subpool')."' class='subpool' onclick='addSubpoolPopup(\"$pool\",\"$current_subpools_list\")'".(count($current_subpools)<count($subpools)?'':' disabled').">";
-        } else {
-          $echo[$a][] = "<input type='button' value='"._('Add Subpool')."' class='subpool' disabled>";
-        }
+        $echo[$a][] = "<input type='button' value='"._('Add Subpool')."' class='subpool' onclick='addSubpoolPopup(\"$pool\",\"$current_subpools_list\")'".(count($current_subpools)<count($subpools)?'':' disabled').">";
       }
       $echo[$a][] = "</span></td><td></td></tr>";
     } else {

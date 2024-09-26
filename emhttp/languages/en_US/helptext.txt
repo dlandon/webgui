@@ -256,7 +256,7 @@ Unraid OS uses these default options when creating a multiple-device pool:
 
 `-dconvert=raid1 -mconvert=raid1`
 
-For more complete documentation, please refer to the btrfs-balance [Manpage](https://btrfs.wiki.kernel.org/index.php/Manpage/btrfs-balance)
+For more complete documentation, please refer to the btrfs-balance [Manpage](https://man7.org/linux/man-pages/man8/btrfs-balance.8.html)
 
 *Note: raid5 and raid6 are generally still considered **experimental** by the Linux community*
 :end
@@ -1281,6 +1281,14 @@ Enter your local Top Level Domain. May be blank.
 :mgmt_local_access_urls_help:
 The Local Access URLs shown above are based on your current settings. 
 To adjust URLs or redirects, see the help text for "Use SSL/TLS".
+:end
+
+:mgmt_wg_access_urls_help:
+These URLs will only work when connected via the appropriate WireGuard tunnel as configured on ***Settings > VPN Manager***
+:end
+
+:mgmt_tailscale_access_urls_help:
+These URLs will only work when connected to the appropriate Tailscale Tailnet.
 :end
 
 :mgmt_certificate_expiration_help:

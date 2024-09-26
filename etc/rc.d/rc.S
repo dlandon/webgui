@@ -79,7 +79,7 @@ abort() {
   /bin/umount -a
   read -p "$1 - press ENTER key to reboot..."
   /bin/echo
-  /sbin/reboot
+  /sbin/reboot -fd
 }
 
 find_device() {

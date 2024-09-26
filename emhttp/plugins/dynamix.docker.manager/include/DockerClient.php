@@ -929,6 +929,9 @@ class DockerClient {
 			$c['Created']     = $this->humanTiming($ct['Created']);
 			$c['NetworkMode'] = $ct['HostConfig']['NetworkMode'];
 			$c['Manager'] 	  = $info['Config']['Labels']['net.unraid.docker.managed'] ?? false;
+			if ($c['Manager'] == 'composeman') {
+				$c['ComposeProject'] = $info['Config']['Labels']['com.docker.compose.project'];
+			}
 			[$net, $id]       = array_pad(explode(':',$c['NetworkMode']),2,'');
 			$c['CPUset']      = $info['HostConfig']['CpusetCpus'];
 			$c['BaseImage']   = $ct['Labels']['BASEIMAGE'] ?? false;

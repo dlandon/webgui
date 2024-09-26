@@ -910,9 +910,9 @@
 					}
 
 					if ($gpu['multi'] == "on"){
-						$newgpu_bus= 0x10;
+						$newgpu_bus= 0x07;
 						if (!isset($multibus[$newgpu_bus])) {
-							$multibus[$newgpu_bus] = 0x10;
+							$multibus[$newgpu_bus] = 0x07;
 						} else {
 							#Get next bus
 							$newgpu_bus = end($multibus) + 0x01;
@@ -2004,8 +2004,17 @@
 				if (is_file($cfg)) unlink($cfg);
 				if (is_file($xml)) unlink($xml);
 				if (is_dir($dir) && $this->is_dir_empty($dir)) {
-					$error = my_rmdir($dir);
-					qemu_log("$domain","delete empty $dir $error");
+					$result= my_rmdir($dir);
+					if ($result['type'] == "zfs") {
+						qemu_log("$domain","delete empty zfs $dir {$result['rtncode']}");
+						if (isset($result['dataset'])) qemu_log("$domain","dataset {$result['dataset']} ");
+						if (isset($result['cmd'])) qemu_log("$domain","Command {$result['cmd']} ");
+						if (isset($result['output'])) {
+							$outputlogs = implode(" ",$result['output']);
+							qemu_log("$domain","Output $outputlogs end");
+						}
+					}
+					else qemu_log("$domain","delete empty $dir {$result['rtncode']}");				
 				} 
 			}
 

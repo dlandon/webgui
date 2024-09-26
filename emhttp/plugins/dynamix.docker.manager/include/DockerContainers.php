@@ -69,7 +69,8 @@ foreach ($containers as $ct) {
   $running = $info['running'] ? 1 : 0;
   $paused = $info['paused'] ? 1 : 0;
   $is_autostart = $info['autostart'] ? 'true':'false';
-  $updateStatus = substr($ct['NetworkMode'],-4)==':???' ? 2 : ($info['updated']=='true' ? 0 : ($info['updated']=='false' ? 1 : 3));
+  $composestack = isset($ct['ComposeProject']) ? $ct['ComposeProject'] : '';
+  $updateStatus = substr($ct['NetworkMode'], -4) == ':???' ? 2 : ($info['updated'] == 'true' ? 0 : ($info['updated'] == 'false' ? 1 : 3));
   $template = $info['template']??'';
   $shell = $info['shell']??'';
   $webGui = html_entity_decode($info['url']??'');
@@ -83,7 +84,7 @@ foreach ($containers as $ct) {
   $shape = $running ? ($paused ? 'pause' : 'play') : 'square';
   $status = $running ? ($paused ? 'paused' : 'started') : 'stopped';
   $color = $status=='started' ? 'green-text' : ($status=='paused' ? 'orange-text' : 'red-text');
-  $update = $updateStatus==1 ? 'blue-text' : '';
+  $update = $updateStatus==1 && !empty($compose) ? 'blue-text' : '';
   $icon = $info['icon'] ?: '/plugins/dynamix.docker.manager/images/question.png';
   $image = substr($icon,-4)=='.png' ? "<img src='$icon?".filemtime("$docroot{$info['icon']}")."' class='img' onerror=this.src='/plugins/dynamix.docker.manager/images/question.png';>" : (substr($icon,0,5)=='icon-' ? "<i class='$icon img'></i>" : "<i class='fa fa-$icon img'></i>");
   $wait = var_split($autostart[array_search($name,$names)]??'',1);
@@ -119,12 +120,12 @@ foreach ($containers as $ct) {
     $paths[] = sprintf('%s<i class="fa fa-%s" style="margin:0 6px"></i>%s', htmlspecialchars($container_path), $access_mode=='ro'?'long-arrow-left':'arrows-h', htmlspecialchars($host_path));
   }
   echo "<tr class='sortable'><td class='ct-name' style='width:220px;padding:8px'><i class='fa fa-arrows-v mover orange-text'></i>";
-  if ($template) {
+  if ($template && empty($composestack)) {
     $appname = "<a class='exec' onclick=\"editContainer('".addslashes(htmlspecialchars($name))."','".addslashes(htmlspecialchars($template))."')\">".htmlspecialchars($name)."</a>";
   } else {
     $appname = htmlspecialchars($name);
   }
-  echo "<span class='outer'><span id='$id' $menu class='hand'>$image</span><span class='inner'><span class='appname $update'>$appname</span><br><i id='load-$id' class='fa fa-$shape $status $color'></i><span class='state'>"._($status)."</span></span></span>";
+  echo "<span class='outer'><span id='$id' $menu class='hand'>$image</span><span class='inner'><span class='appname $update'>$appname</span><br><i id='load-$id' class='fa fa-$shape $status $color'></i><span class='state'>"._($status).(!empty($composestack) ? '<br/>Compose Stack: ' . $composestack : '')."</span></span></span>";
   echo "<div class='advanced' style='margin-top:8px'>"._('Container ID').": $id<br>";
   if ($ct['BaseImage']) echo "<i class='fa fa-cubes' style='margin-right:5px'></i>".htmlspecialchars($ct['BaseImage'])."<br>";
   echo _('By').": ";
@@ -137,28 +138,47 @@ foreach ($containers as $ct) {
   }
   echo "</div></td><td class='updatecolumn'>";
   switch ($updateStatus) {
-  case 0:
-    echo "<span class='green-text' style='white-space:nowrap;'><i class='fa fa-check fa-fw'></i> "._('up-to-date')."</span>";
-    if ($ct['Manager'] == "dockerman")
-      echo "<div class='advanced'><a class='exec' onclick=\"updateContainer('".addslashes(htmlspecialchars($name))."');\"><span style='white-space:nowrap;'><i class='fa fa-cloud-download fa-fw'></i> "._('force update')."</span></a></div>";
-    break;
+    case 0:
+      if ($ct['Manager'] == "dockerman") {
+        echo "<span class='green-text' style='white-space:nowrap;'><i class='fa fa-check fa-fw'></i> "._('up-to-date')."</span>";
+        echo "<div class='advanced'><a class='exec' onclick=\"updateContainer('".addslashes(htmlspecialchars($name))."');\"><span style='white-space:nowrap;'><i class='fa fa-cloud-download fa-fw'></i> "._('force update')."</span></a></div>";
+      } elseif (!empty($composestack)) {
+        echo "<div><span><i class='fa fa-docker fa-fw'/></i> Compose</span></div>";
+        echo "<span tyle='white-space:nowrap;'><i class='fa fa-check fa-fw'></i> "._('up-to-date')."</span>";
+      } else {
+        echo "<div><span><i class='fa fa-docker fa-fw'/></i> 3rd Party</span></div>";
+        echo "<span tyle='white-space:nowrap;'><i class='fa fa-check fa-fw'></i> "._('up-to-date')."</span>";
+      }
+      break;
     case 1:
       echo "<div class='advanced'><span class='orange-text' style='white-space:nowrap;'><i class='fa fa-flash fa-fw'></i> "._('update ready')."</span></div>";
-      if ($ct['Manager'] == "dockerman")
-        echo "<a class='exec' onclick=\"updateContainer('".addslashes(htmlspecialchars($name))."');\"><span style='white-space:nowrap;'><i class='fa fa-cloud-download fa-fw'></i> "._('apply update')."</span></a>";
-      else
+      if ($ct['Manager'] == "dockerman") {
+        echo "<a class='exec' onclick=\"updateContainer('".addslashes(htmlspecialchars($name))."');\"><span style='white-space:nowrap;'><i class='fa fa-cloud-download fa-fw'></i> "._('apply update')."</span></a>";      
+      } elseif (!empty($composestack)) {
+        echo "<div><span><i class='fa fa-docker fa-fw'/></i> Compose</span></a></div>";
         echo "<span style='white-space:nowrap;'><i class='fa fa-cloud-download fa-fw'></i> "._('update available')."</span>";
+      } else {
+        echo "<div><span><i class='fa fa-docker fa-fw'/></i> 3rd Party</span></div>";
+        echo "<span style='white-space:nowrap;'><i class='fa fa-cloud-download fa-fw'></i> "._('update available')."</span>";
+      }
       break;
     case 2:
       echo "<div class='advanced'><span class='orange-text' style='white-space:nowrap;'><i class='fa fa-flash fa-fw'></i> "._('rebuild ready')."</span></div>";
       echo "<a class='exec'><span style='white-space:nowrap;'><i class='fa fa-recycle fa-fw'></i> "._('rebuilding')."</span></a>";
       break;
     default:
-      echo "<span class='orange-text' style='white-space:nowrap;'><i class='fa fa-unlink'></i> "._('not available')."</span>";
-      if ($ct['Manager'] == "dockerman")
+      if ($ct['Manager'] == "dockerman") {
+        echo "<span class='orange-text' style='white-space:nowrap;'><i class='fa fa-unlink'></i> "._('not available')."</span>";
         echo "<div class='advanced'><a class='exec' onclick=\"updateContainer('".addslashes(htmlspecialchars($name))."');\"><span style='white-space:nowrap;'><i class='fa fa-cloud-download fa-fw'></i> "._('force update')."</span></a></div>";
+      } elseif (!empty($composestack)) {
+        echo "<div><span><i class='fa fa-docker fa-fw'/></i> Compose</span></div>";
+        echo "<span style='white-space:nowrap;'><i class='fa fa-unlink'></i> "._('not available')."</span>";
+      } else {
+        echo "<div><span><i class='fa fa-docker fa-fw'/></i> 3rd Party</span></div>";
+        echo "<span class='orange-text' style='white-space:nowrap;'><i class='fa fa-unlink'></i> "._('not available')."</span>";
+      }
       break;
-  }
+    }
   echo "<div class='advanced'><i class='fa fa-info-circle fa-fw'></i> ".compress(_($version),12,0)."</div></td>";
   echo "<td style='white-space:nowrap'><span class='docker_readmore'> ".implode('<br>',$networks)."</span></td>";
   echo "<td style='white-space:nowrap'><span class='docker_readmore'> ".implode('<br>',$network_ips)."</span></td>";
@@ -167,7 +187,15 @@ foreach ($containers as $ct) {
   echo "<td style='word-break:break-all'><span class='docker_readmore'>".implode('<br>',$paths)."</span></td>";
   echo "<td class='advanced'><span class='cpu-$id'>0%</span><div class='usage-disk mm'><span id='cpu-$id' style='width:0'></span><span></span></div>";
   echo "<br><span class='mem-$id'>0 / 0</span></td>";
-  echo "<td><input type='checkbox' id='$id-auto' class='autostart' container='".htmlspecialchars($name)."'".($info['autostart'] ? ' checked':'').">";
+  if (empty($composestack)) {
+    if ($ct['Manager'] == "dockerman") {
+      echo "<td><input type='checkbox' id='$id-auto' class='autostart' container='".htmlspecialchars($name)."'".($info['autostart'] ? ' checked':'').">";
+    } else {
+      echo "<td><i class='fa fa-docker fa-fw'/></i> 3rd Party";
+    }
+  } else {
+    echo "<td><i class='fa fa-docker'/></i> Compose";
+  }
   echo "<span id='$id-wait' style='float:right;display:none'>"._('wait')."<input class='wait' container='".htmlspecialchars($name)."' type='number' value='$wait' placeholder='0' title=\""._('seconds')."\"></span></td>";
   echo "<td><div style='white-space:nowrap'>".htmlspecialchars(str_replace('Up',_('Uptime').':',my_lang_log($ct['Status'])))."<div style='margin-top:4px'>"._('Created').": ".htmlspecialchars(my_lang_time($ct['Created']))."</div></div></td></tr>";
 }

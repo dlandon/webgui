@@ -213,6 +213,9 @@ if (isset($_GET['xmlTemplate'])) {
   if (is_file($xmlTemplate)) {
     $xml = xmlToVar($xmlTemplate);
     $templateName = $xml['Name'];
+    if (preg_match('/^container:(.*)/', $xml['Network'])) {
+      $xml['Network'] = explode(':', $xml['Network'], 2);
+    }
     if ($xmlType == 'default') {
       if (!empty($dockercfg['DOCKER_APP_CONFIG_PATH']) && file_exists($dockercfg['DOCKER_APP_CONFIG_PATH'])) {
         // override /config
@@ -858,6 +861,7 @@ _(Network Type)_:
 : <select name="contNetwork" onchange="showSubnet(this.value)">
   <?=mk_option(1,'bridge',_('Bridge'))?>
   <?=mk_option(1,'host',_('Host'))?>
+  <?=mk_option(1,'container',_('Container'))?>
   <?=mk_option(1,'none',_('None'))?>
   <?foreach ($custom as $network):?>
   <?$name = $network;
@@ -880,6 +884,21 @@ _(Fixed IP address)_ (_(optional)_):
 
 :docker_fixed_ip_help:
 
+</div>
+
+<div markdown="1" class="netCONT noshow">
+_(Container Network)_:
+: <select name="netCONT" id="netCONT">
+  <?php
+  foreach ($DockerClient->getDockerContainers() as $ct) {
+    if ($ct['Name'] !== $xml['Name']) {
+      $list[] = $ct['Name'];
+      echo mk_option($ct['Name'], $ct['Name'], $ct['Name']);
+    }
+  }
+  ?>
+:docker_container_network_help:
+</select>
 </div>
 _(Console shell command)_:
 : <select name="contShell">
@@ -1013,9 +1032,18 @@ function showSubnet(bridge) {
   if (bridge.match(/^(bridge|host|none)$/i) !== null) {
     $('.myIP').hide();
     $('input[name="contMyIP"]').val('');
+    $('.netCONT').hide();
+    $('#netCONT').val('');
+  } else if (bridge.match(/^(container)$/i) !== null) {
+    $('.netCONT').show();
+    $('#netCONT').val('<?php echo $xml['Network'][1]; ?>');
+    $('.myIP').hide();
+    $('input[name="contMyIP"]').val('');
   } else {
     $('.myIP').show();
     $('#myIP').html('Subnet: '+subnet[bridge]);
+    $('.netCONT').hide();
+    $('#netCONT').val('');
   }
 }
 

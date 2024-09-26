@@ -345,27 +345,46 @@ function my_mkdir($dirname,$permissions = 0777,$recursive = false,$own = "nobody
   return($rtncode);
 }
 function my_rmdir($dirname) {
-  if (!is_dir($dirname)) return(false);
+  if (!is_dir("$dirname")) {
+    $return = [
+      'rtncode' => "false",
+      'type' => "NoDir",
+    ];
+    return($return);
+  }
   if (strpos($dirname,'/mnt/user/')===0) {
     $realdisk = trim(shell_exec("getfattr --absolute-names --only-values -n system.LOCATION ".escapeshellarg($dirname)." 2>/dev/null"));
     if (!empty($realdisk)) {
-      $dirname = str_replace('/mnt/user/', "/mnt/$realdisk/", $dirname);
+      $dirname = str_replace('/mnt/user/', "/mnt/$realdisk/", "$dirname");
     }
   }
-  $fstype = trim(shell_exec(" stat -f -c '%T' $dirname"));
+  $fstype = trim(shell_exec(" stat -f -c '%T' ".escapeshellarg($dirname)));
   $rtncode = false;
   switch ($fstype) {
     case "zfs":
       $zfsoutput = array();
-      $zfsdataset = trim(shell_exec("zfs list -H -o name  \"$dirname\"")) ;
-      exec("zfs destroy \"$zfsdataset\"",$zfsoutput,$rtncode);
+      $zfsdataset = trim(shell_exec("zfs list -H -o name  ".escapeshellarg($dirname))) ;
+      $cmdstr = "zfs destroy \"$zfsdataset\"  2>&1 ";
+      $error = exec($cmdstr,$zfsoutput,$rtncode);
+      $return = [
+        'rtncode' => $rtncode,
+        'output' => $zfsoutput,
+        'dataset' => $zfsdataset,
+        'type' => $fstype,
+        'cmd' => $cmdstr,
+        'error' => $error,
+      ];
       break;
     case "btrfs":
     default:
       $rtncode = rmdir($dirname);
+      $return = [
+        'rtncode' => $rtncode,
+        'type' => $fstype,
+      ];
       break;
   }
-  return($rtncode);
+  return($return);
 }
 function get_realvolume($path) {
   if (strpos($path,"/mnt/user/",0) === 0) 
