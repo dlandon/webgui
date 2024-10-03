@@ -824,6 +824,13 @@ class DockerClient {
 		global $docroot, $dockerManPaths;
 		$id = $id ?: $name;
 		$info = DockerUtil::loadJSON($dockerManPaths['webui-info']);
+
+		// Check to see if the container is linked to other containers
+		$networks = array_map(function ($n) { return $n['NetworkMode']; }, $this->getDockerContainers());
+		if (in_array("container:{$name}", $networks)) {
+				return "Container currently assigned as network for another container.";
+		}
+
 		// Attempt to remove container
 		$this->getDockerJSON("/containers/$id?force=1", 'DELETE', $code);
 		if (isset($info[$name])) {

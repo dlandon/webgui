@@ -723,6 +723,7 @@ newline("/$diag/system/sshd.txt");
 copy("/etc/nginx/conf.d/servers.conf", "/$diag/system/servers.conf.txt");
 maskIP("/$diag/system/servers.conf.txt");
 run("sed -Ei 's/[01234567890abcdef]+\.((my)?unraid\.net)/hash.\\1/gm;t' ".escapeshellarg("/$diag/system/servers.conf.txt")." 2>/dev/null");
+run("sed -Ei 's/\.[^\.]*\.ts\.net/\.magicdns\.ts\.net/gm' ".escapeshellarg("/$diag/system/servers.conf.txt")." 2>/dev/null");
 newline("/$diag/system/servers.conf.txt");
 
 // BEGIN - third party plugins diagnostics

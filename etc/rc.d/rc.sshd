@@ -26,7 +26,7 @@ sshd_running(){
   # get all pids from sshd
   for pid in $(pgrep -f $SSHD); do
     # check if a sshd is running on host system
-    if ! grep -qE '/docker/|/lxc/' /proc/$pid/cgroup; then
+    if ! grep -qE '/docker|/lxc' /proc/$pid/cgroup; then
       return 0
     fi
   done
@@ -77,7 +77,7 @@ sshd_stop(){
     # get all pids from sshd
     for pid in $(pgrep -f $SSHD); do
       # make sure to kill only sshd from host system
-      if ! grep -qE '/docker/|/lxc/' /proc/$pid/cgroup; then
+      if ! grep -qE '/docker|/lxc' /proc/$pid/cgroup; then
         kill $pid
       fi
     done

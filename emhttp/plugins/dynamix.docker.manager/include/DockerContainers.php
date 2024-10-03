@@ -175,7 +175,7 @@ foreach ($containers as $ct) {
         echo "<span style='white-space:nowrap;'><i class='fa fa-unlink'></i> "._('not available')."</span>";
       } else {
         echo "<div><span><i class='fa fa-docker fa-fw'/></i> 3rd Party</span></div>";
-        echo "<span class='orange-text' style='white-space:nowrap;'><i class='fa fa-unlink'></i> "._('not available')."</span>";
+        echo "<span style='white-space:nowrap;'><i class='fa fa-unlink'></i> "._('not available')."</span>";
       }
       break;
     }
