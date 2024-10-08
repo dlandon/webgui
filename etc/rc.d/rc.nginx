@@ -32,7 +32,7 @@ MYSERVERS="/boot/config/plugins/dynamix.my.servers/myservers.cfg"
 DEFAULTS="/etc/default/nginx"
 
 # Load defaults
-# Defines CUSTOMFA for custom Content-Security-Policy frame-ancestors url
+# Defines NGINX_CUSTOMFA for custom Content-Security-Policy frame-ancestors url
 [[ -r $DEFAULTS ]] && . $DEFAULTS
 
 # hold server names
@@ -112,7 +112,7 @@ redirect(){
         [[ $(ipv $ADDR) == 6 ]] && HOST="[$ADDR]"
         [[ -n $HOST ]] && echo "${T}listen $HOST:$*; # $(show $ADDR)"
       done
-      echo "${T}add_header Content-Security-Policy \"frame-ancestors 'self' $CUSTOMFA\";"
+      echo "${T}add_header Content-Security-Policy \"frame-ancestors 'self' $NGINX_CUSTOMFA\";"
       echo "${T}return 302 https://\$host:$PORTSSL\$request_uri;"
       echo "}"
       ;;
@@ -124,7 +124,7 @@ redirect(){
         if [[ -n $HOST ]]; then
           echo "server {"
           echo "${T}listen $HOST:$*; # $(show $ADDR)"
-          echo "${T}add_header Content-Security-Policy \"frame-ancestors 'self' $CUSTOMFA\";"
+          echo "${T}add_header Content-Security-Policy \"frame-ancestors 'self' $NGINX_CUSTOMFA\";"
           echo "${T}return 302 https://$(fqdn $ADDR)$PORTSSL_URL\$request_uri;"
           echo "}"
         fi
@@ -163,7 +163,7 @@ build_servers(){
 	server {
 	$(listen lo)
 	    #
-	    add_header Content-Security-Policy "frame-ancestors 'self' $CUSTOMFA";
+	    add_header Content-Security-Policy "frame-ancestors 'self' $NGINX_CUSTOMFA";
 	    include /etc/nginx/conf.d/locations.conf;
 	}
 	EOF
@@ -179,7 +179,7 @@ build_servers(){
 	server {
 	$(listen $PORT default_server)
 	    #
-	    add_header Content-Security-Policy "frame-ancestors 'self' $CUSTOMFA";
+	    add_header Content-Security-Policy "frame-ancestors 'self' $NGINX_CUSTOMFA";
 	    location ~ /wsproxy/$PORT/ { return 403; }
 	    include /etc/nginx/conf.d/locations.conf;
 	}
@@ -193,7 +193,7 @@ build_servers(){
 	server {
 	$(listen $PORTSSL ssl default_server)
 	    http2 on;
-	    add_header Content-Security-Policy "frame-ancestors 'self' $SELFCERTFA $CUSTOMFA";
+	    add_header Content-Security-Policy "frame-ancestors 'self' $SELFCERTFA $NGINX_CUSTOMFA";
 	    # Ok to use concatenated pem files; nginx will do the right thing.
 	    ssl_certificate         $SELFCERTPATH;
 	    ssl_certificate_key     $SELFCERTPATH;
@@ -239,7 +239,7 @@ build_servers(){
 	server {
 	$(listen $PORTSSL ssl default_server)
 	    http2 on;
-	    add_header Content-Security-Policy "frame-ancestors 'self' $SELFCERTFA $CUSTOMFA";
+	    add_header Content-Security-Policy "frame-ancestors 'self' $SELFCERTFA $NGINX_CUSTOMFA";
 	    # Ok to use concatenated pem files; nginx will do the right thing.
 	    ssl_certificate         $SELFCERTPATH;
 	    ssl_certificate_key     $SELFCERTPATH;
@@ -261,7 +261,7 @@ build_servers(){
 	server {
 	$(listen $PORTSSL ssl default_server)
 	    http2 on;
-	    add_header Content-Security-Policy "frame-ancestors 'self' $SELFCERTFA $CUSTOMFA";
+	    add_header Content-Security-Policy "frame-ancestors 'self' $SELFCERTFA $NGINX_CUSTOMFA";
 	    # Ok to use concatenated pem files; nginx will do the right thing.
 	    ssl_certificate         $SELFCERTPATH;
 	    ssl_certificate_key     $SELFCERTPATH;
@@ -284,7 +284,7 @@ build_servers(){
 	$(listen $PORTSSL ssl)
 	    http2 on;
 	    server_name ${SERVER_NAMES[@]};
-	    add_header Content-Security-Policy "frame-ancestors 'self' $CERTFA $CUSTOMFA";
+	    add_header Content-Security-Policy "frame-ancestors 'self' $CERTFA $NGINX_CUSTOMFA";
 	    # Ok to use concatenated pem files; nginx will do the right thing.
 	    ssl_certificate         $CERTPATH;
 	    ssl_certificate_key     $CERTPATH;
@@ -318,7 +318,7 @@ build_servers(){
 	server {
 	$(listen $PORTSSL ssl http2)
 	    server_name $TSFQDN;
-	    add_header Content-Security-Policy "frame-ancestors 'self' $TSFA $CUSTOMFA";
+	    add_header Content-Security-Policy "frame-ancestors 'self' $TSFA $NGINX_CUSTOMFA";
 	    # Ok to use concatenated pem files; nginx will do the right thing.
 	    ssl_certificate         $TSCERTPATH;
 	    ssl_certificate_key     $TSCERTPATH;
