@@ -35,7 +35,7 @@ ntpd_build(){
     [[ $IPV6 == no ]] && echo "interface ignore ipv6" >>$CONF
     # add listen interfaces
     for NET in $BIND; do
-      echo "interface listen $NET # $(show $NET)" >>$CONF
+      echo "interface listen $(show $NET) # $NET" >>$CONF
     done
   fi
   # add configured NTP servers

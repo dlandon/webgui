@@ -644,6 +644,7 @@ function updateScreen(cache, slow) {
 				secondaryDropdown.options[i].disabled = true;
 			}
 			secondaryDropdown.selectedIndex = 0;
+			checkRequiredSecondary = false;
 
 			if (poolsOnly) {
 				$('#moverDirection2').hide();
