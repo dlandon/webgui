@@ -268,7 +268,7 @@ function array_online(&$disk, $fstype='') {
     $sum['count']++;
     $sum['temp'] += $disk['temp'];
   }
-  $sum['power'] += _var($disk,'power',0);
+  $sum['power'] += intval(_var($disk,'power',0));
   $sum['numReads'] += _var($disk,'numReads',0);
   $sum['numWrites'] += _var($disk,'numWrites',0);
   $sum['numErrors'] += _var($disk,'numErrors',0);
