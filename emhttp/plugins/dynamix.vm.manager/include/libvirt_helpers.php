@@ -1750,6 +1750,9 @@ private static $encoding = 'UTF-8';
 			$pi = pathinfo($config["disk"][$diskid]["new"]) ;
 			$isdir = is_dir($pi['dirname']) ;
 			if (is_file($config["disk"][$diskid]["new"])) $file_exists = true ;
+			write("addLog\0".htmlspecialchars("Checking from file:".$file_clone[$diskid]["source"]));
+			write("addLog\0".htmlspecialchars("Checking to file:".$config["disk"][$diskid]["new"]));
+			write("addLog\0".htmlspecialchars("File exists value:". ($file_exists ? "True" : "False")));
 			$file_clone[$diskid]["target"] = $config["disk"][$diskid]["new"] ;
 			}
 

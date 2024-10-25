@@ -154,7 +154,8 @@
 				$protocol = $lv->domain_get_vmrc_protocol($dom);
 				$reply = ['success' => true];
 				if ($vmrcport > 0) {
-					$reply['vmrcurl']  = autov('/plugins/dynamix.vm.manager/'.$protocol.'.html',true).'&autoconnect=true&host=' . $_SERVER['HTTP_HOST'] ;
+					if ($protocol == "vnc") $vmrcscale = "&resize=scale"; else $vmrcscale = "";
+					$reply['vmrcurl']  = autov('/plugins/dynamix.vm.manager/'.$protocol.'.html',true).'&autoconnect=true'.$vmrcscale.'&host=' . $_SERVER['HTTP_HOST'] ;
 					if ($protocol == "spice") $reply['vmrcurl']  .= '&port=/wsproxy/'.$vmrcport.'/'; else $reply['vmrcurl'] .= '&port=&path=/wsproxy/' . $wsport . '/';
 				}
 			} else {

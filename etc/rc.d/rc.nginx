@@ -781,9 +781,10 @@ nginx_renew(){
 }
 
 nginx_update(){
-  # 0 = update needed, 1 = no action
-  if ! nginx_running; then exit 1; fi
-  if check && [[ "$(this)" == "$BIND" ]]; then exit 1; else exit 0; fi
+  if nginx_running && check && [[ "$(this)" != "$BIND" ]]; then
+    log "Updating $DAEMON..."
+    nginx_reload
+  fi
 }
 
 nginx_upgrade(){

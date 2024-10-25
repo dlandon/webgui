@@ -54,7 +54,7 @@ vmlist(){
   for ARG in ${@: 1}; do
     [[ $ARG == all ]] && STATE="$STATE --all" || STATE="$STATE --state-$ARG"
   done
-  virsh list --uuid $STATE | grep -v '^$'
+  virsh list --uuid $STATE | tail -n +3 | grep -v '^$'
 }
 
 waitfor(){

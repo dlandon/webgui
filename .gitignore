@@ -58,7 +58,6 @@ games/
 info/
 lib64/
 man/
-share/
 
 # Auto-generated when emhttpd/webGUI start
 emhttp/languages/en_US/helptext.dot

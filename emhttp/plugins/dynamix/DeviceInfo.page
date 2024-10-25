@@ -125,6 +125,14 @@ function isPool($name) {
   global $pools;
   return in_array($name,$pools);
 }
+/* Check to see if a pool has already been upgraded. */
+function is_upgraded_ZFS_pool($pool_name) {
+
+	/* See if the pool is aready upgraded. */
+	$upgrade	= trim(shell_exec("/usr/sbin/zpool status ".escapeshellarg($pool_name)." | /usr/bin/grep 'Enable all features using.'") ?? "");
+
+	return ($upgrade ? false : true);
+}
 ?>
 <link type="text/css" rel="stylesheet" href="<?autov("/webGui/styles/jquery.ui.css")?>">
 <link type="text/css" rel="stylesheet" href="<?autov("/plugins/dynamix.docker.manager/styles/style-$theme.css")?>">
@@ -620,7 +628,7 @@ function eraseDisk(name) {
     text:"<?=$textErase?><p style='font-weight:bold;color:red;margin:8px 0'>_(Existing content is permanently lost)_</p>",
     html:true,
     type:'input',
-    inputPlaceholder:"<?=sprintf(_('To confirm your action type: %s'),$name)?>",
+    inputPlaceholder:"<?=sprintf(_('To confirm type: %s'),$name)?>",
     showCancelButton:true,
     closeOnConfirm:false,
     confirmButtonText:"_(Proceed)_",
@@ -648,7 +656,7 @@ function removePool(name) {
     text:"<?=$textDelete?>",
     html:true,
     type:'input',
-    inputPlaceholder:"<?=sprintf(_('To confirm your action type: %s'),$name)?>",
+    inputPlaceholder:"<?=sprintf(_('To confirm type: %s'),$name)?>",
     showCancelButton:true,
     closeOnConfirm:false,
     confirmButtonText:"_(Proceed)_",
@@ -662,6 +670,34 @@ function removePool(name) {
       $('#removeButton').prop('disabled',true);
       $('div.spinner.fixed').show();
       $.post("/update.htm",{changeSlots:"apply",poolName:name,poolSlots:0},function(){
+        $('div.spinner.fixed').hide();
+        refresh();
+      });
+    } else {
+      if (confirm.length) swal({title:"_(Incorrect confirmation)_",text:"_(Please try again)_!",type:'error',html:true,confirmButtonText:"_(Ok)_"});
+    }
+  });
+}
+function upgradeZpool(name) {
+  swal({
+    title:"_(Upgrade ZFS Pool)_?",
+    text:"_(This operation cannot be reversed)_. _(After upgrading the volume may not be mountable in previous versions of Unraid)_.<p style='font-weight:bold;color:red;margin:8px 0'>_(The ZFS volume will be upgraded)_</p>",
+    html:true,
+    type:'input',
+    inputPlaceholder:"<?=sprintf(_('To confirm type: %s'),$name)?>",
+    showCancelButton:true,
+    closeOnConfirm:false,
+    confirmButtonText:"_(Proceed)_",
+    cancelButtonText:"_(Cancel)_"
+  },
+  function(confirm){
+    if (confirm == "<?=$name?>") {
+      swal.close();
+      $('#doneButton').prop('disabled',true);
+      $('#eraseButton').prop('disabled',true);
+      $('#deleteButton').prop('disabled',true);
+      $('div.spinner.fixed').show();
+      $.post("/webGui/include/zfs_upgrade.php",{name:name},function(){
         $('div.spinner.fixed').hide();
         refresh();
       });
@@ -1106,6 +1142,9 @@ _(zfs pool status)_:
 
 &nbsp;
 : <input type="submit" id="zfs-button" value="<?=$zfs_cmd=='start' ? _('Scrub') : _('Clear')?>">
+<?if (! is_upgraded_ZFS_pool($name)):?>
+<input type="button" id="upgradeButton" value="_(Upgrade Pool)_" onclick="upgradeZpool('<?=$name?>')">
+<?endif;?>
 
 :info_zfs_scrub_help:
 

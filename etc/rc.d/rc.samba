@@ -34,7 +34,7 @@ PRIVATE="/var/lib/samba/private"
 
 samba_running(){
   sleep 0.1
-  [[ $(pgrep -cf $SMBD) -gt 0 ]]
+  [[ $(pgrep --ns $$ -cf $SMBD) -gt 0 ]]
 }
 
 samba_waitfor_shutdown(){
@@ -195,9 +195,10 @@ samba_reload(){
 }
 
 samba_update(){
-  # 0 = update needed, 1 = no action
-  if ! samba_running; then exit 1; fi
-  if check && [[ "$(this interfaces)" == "$BIND" ]]; then exit 1; else exit 0; fi
+  if samba_running && check && [[ "$(this interfaces)" != "$BIND" ]]; then
+    log "Updating $DAEMON..."
+    samba_restart # note we need restart here, not reload in order to update interfaces
+  fi
 }
 
 samba_status(){
