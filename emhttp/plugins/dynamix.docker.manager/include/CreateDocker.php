@@ -375,6 +375,7 @@ $TS_MachinesLink = "https://login.tailscale.com/admin/machines/";
 $TS_DirectMachineLink = $TS_MachinesLink;
 $TS_HostNameActual = "";
 $TS_not_approved = "";
+$TS_https_enabled = false;
 // Get Tailscale information and create arrays/variables
 !empty($xml) && exec("docker exec -i " . escapeshellarg($xml['Name']) . " /bin/sh -c \"tailscale status --peers=false --json\"", $TS_raw);
 $TS_no_peers = json_decode(implode('', $TS_raw),true);
@@ -386,7 +387,10 @@ if (!empty($TS_no_peers) && !empty($TS_container)) {
     $TS_DirectMachineLink = $TS_MachinesLink.$TS_container['TailscaleIPs'][0];
   }
   // warn if MagicDNS or HTTPS is disabled
-  if (empty($TS_no_peers['CurrentTailnet']['MagicDNSEnabled']) || !$TS_no_peers['CurrentTailnet']['MagicDNSEnabled'] || empty($TS_no_peers['CertDomains']) || empty($TS_no_peers['CertDomains'][0])) {
+  if (isset($TS_no_peers['Self']['Capabilities']) && is_array($TS_no_peers['Self']['Capabilities'])) {
+    $TS_https_enabled = in_array("https", $TS_no_peers['Self']['Capabilities'], true) ? true : false;
+  }
+  if (empty($TS_no_peers['CurrentTailnet']['MagicDNSEnabled']) || !$TS_no_peers['CurrentTailnet']['MagicDNSEnabled'] || $TS_https_enabled !== true) {
     $TS_HTTPSDisabledWarning = "<span><b><a href='https://tailscale.com/kb/1153/enabling-https' target='_blank'>Enable HTTPS</a> on your Tailscale account to use Tailscale Serve/Funnel.</b></span>";
   }
   // In $TS_container, 'HostName' is what the user requested, need to parse 'DNSName' to find the actual HostName in use
@@ -1226,7 +1230,6 @@ _(Tailscale Allow LAN Access)_:
     <?=mk_option(1,'false',_('No'))?>
     <?=mk_option(1,'true',_('Yes'))?>
   </select>
-<?=$TS_HTTPSDisabledWarning?>
 
 :docker_tailscale_lanaccess_help:
 
@@ -1262,7 +1265,7 @@ _(Tailscale Serve)_:
     <?=mk_option(1,'serve',_('Serve'))?>
     <?=mk_option(1,'funnel',_('Funnel'))?>
   </select>
-<?php if (!empty($TS_webui_url)) echo '<label for="TSserve"><a href="' . $TS_webui_url . '" target="_blank">' . $TS_webui_url . '</a></label>'; ?>
+<?=$TS_HTTPSDisabledWarning?><?php if (!empty($TS_webui_url)) echo '<label for="TSserve"><a href="' . $TS_webui_url . '" target="_blank">' . $TS_webui_url . '</a></label>'; ?>
 
 :docker_tailscale_serve_mode_help:
 
@@ -1330,6 +1333,17 @@ _(Tailscale Advertise Routes)_:
 : <input type="text" pattern="[0-9:., ]*" name="TSroutes" <?php if (!empty($xml['TailscaleRoutes'])) echo 'value="' . $xml['TailscaleRoutes'] . '"'?> placeholder="_(Leave empty if unsure)_">
 
 :docker_tailscale_advertise_routes_help:
+
+</div>
+
+<div markdown="1" class="TSacceptroutes noshow">
+_(Tailscale Accept Routes)_:
+: <select name="TSacceptroutes" id="TSacceptroutes">
+    <?=mk_option(1,'false',_('No'))?>
+    <?=mk_option(1,'true',_('Yes'))?>
+  </select>
+
+:docker_tailscale_accept_routes_help:
 
 </div>
 
@@ -1646,6 +1660,7 @@ function showTSAdvanced(checked) {
     $('.TSwebui').hide();
     $('.TStroubleshooting').hide();
     $('.TSroutes').hide();
+    $('.TSacceptroutes').hide();
   } else {
     $('.TSdaemonparams').show();
     $('.TSextraparams').show();
@@ -1658,6 +1673,7 @@ function showTSAdvanced(checked) {
     $('.TSwebui').show();
     $('.TStroubleshooting').show();
     $('.TSroutes').show();
+    $('.TSacceptroutes').show();
   }
 }
 
@@ -1691,6 +1707,7 @@ function showTailscale(source) {
     $('.TSserveport').hide();
     $('.TSadvanced').hide();
     $('.TSroutes').hide();
+    $('.TSacceptroutes').hide();
   } else {
     // reset these vals back to what they were in the XML
     $('#TSssh').val('<?php echo (!empty($xml) && !empty($xml['TailscaleSSH'])) ? $xml['TailscaleSSH'] : 'false'; ?>');
@@ -1698,6 +1715,7 @@ function showTailscale(source) {
     $('#TSserve').val('<?php echo (!empty($xml) && !empty($xml['TailscaleServe'])) ? $xml['TailscaleServe'] : 'false'; ?>');
     $('#TSexitnodeip').val('<?php echo (!empty($xml) && !empty($xml['TailscaleExitNodeIP'])) ? $xml['TailscaleExitNodeIP'] : ''; ?>');
     $('#TSuserspacenetworking').val('<?php echo (!empty($xml) && !empty($xml['TailscaleUserspaceNetworking'])) ? $xml['TailscaleUserspaceNetworking'] : 'false'; ?>');
+    $('#TSacceptroutes').val('<?php echo (!empty($xml) && !empty($xml['TailscaleAcceptRoutes'])) ? $xml['TailscaleAcceptRoutes'] : 'false'; ?>');
     <?if (empty($xml['TailscaleServe']) && !empty($TSwebuiport) && empty($xml['TailscaleServePort'])):?>
       $('#TSserve').val('serve');
     <?elseif (empty($xml['TailscaleServe']) && empty($TSwebuiport) && empty($xml['TailscaleServePort'])):?>

@@ -135,6 +135,9 @@ if [ ! -z "${SERVER_DIR}" ]; then
 elif [ ! -z "${DATA_DIR}" ]; then
   TSD_STATE_DIR="${DATA_DIR}/.tailscale_state"
   echo "Settings Tailscale state dir to: ${TSD_STATE_DIR}"
+elif [ ! -z "${USER_HOME}" ]; then
+  TSD_STATE_DIR="${USER_HOME}/.tailscale_state"
+  echo "Settings Tailscale state dir to: ${TSD_STATE_DIR}"
 else
   if [ -z "${TAILSCALE_STATE_DIR}" ]; then
     TAILSCALE_STATE_DIR="/config/.tailscale_state"
@@ -173,6 +176,11 @@ if [ ! -z "${TAILSCALE_ADVERTISE_ROUTES}" ]; then
   TAILSCALE_ADVERTISE_ROUTES="$(echo ${TAILSCALE_ADVERTISE_ROUTES} | sed 's/ //g')"
   echo "Advertising custom routes! See https://tailscale.com/kb/1019/subnets#advertise-subnet-routes"
   TS_PARAMS="${TS_PARAMS} --advertise-routes=${TAILSCALE_ADVERTISE_ROUTES}"
+fi
+
+if [ "${TAILSCALE_ACCEPT_ROUTES}" = "true" ]; then
+  echo "Accepting subnet routes! See https://tailscale.com/kb/1019/subnets#use-your-subnet-routes-from-other-devices"
+  TS_PARAMS="${TS_PARAMS} --accept-routes"
 fi
 
 if [ "${TAILSCALE_USE_SSH}" = "true" ]; then
@@ -224,8 +232,8 @@ if [ "${EXIT_STATUS}" != "0" ]; then
 fi
 unset EXIT_STATUS
 
-if [ ! -z "${TAILSCALE_SERVE_PORT}" ] && [ "$(tailscale status --json | jq -r '.CurrentTailnet.MagicDNSEnabled')" = "false" ] ; then
-  echo "ERROR: Enable HTTPS on your Tailscale account to use Tailscale Serve/Funnel."
+if [ ! -z "${TAILSCALE_SERVE_PORT}" ] && [ "$(tailscale status --json | jq -r '.CurrentTailnet.MagicDNSEnabled')" != "false" ] && [ -z "$(tailscale status --json | jq -r '.Self.Capabilities[] | select(. == "https")')" ]; then
+  echo "ERROR: Enable MagicDNS and HTTPS on your Tailscale account to use Tailscale Serve/Funnel."
   echo "See: https://tailscale.com/kb/1153/enabling-https"
   error_handler
 fi

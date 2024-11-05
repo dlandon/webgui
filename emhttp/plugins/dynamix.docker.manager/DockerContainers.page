@@ -116,6 +116,12 @@ function loadlist(init) {
     clearTimeout(timers.docker);
     var data = d.split(/\0/);
     $('#docker_list').html(data[0]);
+    $('#docker_list .TS_tooltip').tooltipster({
+      animation: 'fade',
+      delay: 200,
+      trigger: 'hover',
+      contentAsHTML: true
+    });
     $('head').append('<script>'+data[1]+'<\/script>');
 <?if (_var($display,'resize')):?>
     resize();
@@ -183,4 +189,3 @@ window.onunload = function(){
   dockerload.stop();
 }
 </script>
-

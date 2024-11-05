@@ -4,8 +4,8 @@ function addDockerContainerContext(container, image, template, started, paused, 
   var opts = [];
   context.settings({right:false,above:false});
   if (started && !paused) {
-    if (webui !== '' && webui != '#') opts.push({text:_('WebUI'), icon:'fa-globe', href:webui, target:'_blank'});
-    if (tswebui !== '' && tswebui != '#') opts.push({text:_('Tailscale WebUI'), icon:'fa-globe', href:tswebui, target:'_blank'});
+    if (webui !== '' && webui != '#') opts.push({text:_('WebUI'), icon:'fa-globe', action:function(e){e.preventDefault();window.open(webui,'_blank');}});
+    if (tswebui !== '' && tswebui != '#') opts.push({text:_('Tailscale WebUI'), icon:'fa-globe', action:function(e){e.preventDefault();window.open(tswebui,'_blank');}});
     opts.push({text:_('Console'), icon:'fa-terminal', action:function(e){e.preventDefault(); openTerminal('docker',container,shell);}});
     opts.push({divider:true});
   }

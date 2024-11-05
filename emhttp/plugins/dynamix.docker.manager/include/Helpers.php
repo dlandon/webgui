@@ -126,6 +126,7 @@ function postToXML($post, $setOwnership=false) {
     $xml->TailscaleParams              = xml_encode($post['TSextraparams']);
     $xml->TailscaleStateDir            = xml_encode($post['TSstatedir']);
     $xml->TailscaleRoutes              = xml_encode($post['TSroutes']);;
+    $xml->TailscaleAcceptRoutes        = xml_encode($post['TSacceptroutes']);;
     if (isset($post['TStroubleshooting']) && strtolower($post['TStroubleshooting']) === 'on') {
       $xml->TailscaleTroubleshooting     = 'true';
     }
@@ -176,6 +177,7 @@ function xmlToVar($xml) {
   $out['TailscaleServePath']           = xml_decode($xml->TailscaleServePath ?? '');
   $out['TailscaleWebUI']               = xml_decode($xml->TailscaleWebUI ?? '');
   $out['TailscaleRoutes']              = xml_decode($xml->TailscaleRoutes ?? '');
+  $out['TailscaleAcceptRoutes']        = xml_decode($xml->TailscaleAcceptRoutes ?? '');
   $out['TailscaleDParams']             = xml_decode($xml->TailscaleDParams ?? '');
   $out['TailscaleParams']              = xml_decode($xml->TailscaleParams ?? '');
   $out['TailscaleStateDir']            = xml_decode($xml->TailscaleStateDir ?? '');
@@ -371,6 +373,7 @@ function xmlToCommand($xml, $create_paths=false) {
   $TS_web_ui = '';
   $TS_troubleshooting = '';
   $TS_routes = '';
+  $TS_accept_routes ='';
   $TS_postargs = '';
   // Get all information from xml and create variables for cmd
   if ($xml['TailscaleEnabled'] == 'true') {
@@ -403,6 +406,7 @@ function xmlToCommand($xml, $create_paths=false) {
     $TS_web_ui = !empty($xml['TailscaleWebUI']) ? '-l net.unraid.docker.tailscale.webui=' . escapeshellarg($xml['TailscaleWebUI']) : '';
     $TS_troubleshooting = !empty($xml['TailscaleTroubleshooting']) ? '-e TAILSCALE_TROUBLESHOOTING=' . escapeshellarg($xml['TailscaleTroubleshooting']) : '';
     $TS_routes = !empty($xml['TailscaleRoutes']) ? '-e TAILSCALE_ADVERTISE_ROUTES=' . escapeshellarg($xml['TailscaleRoutes']) : '';
+    $TS_accept_routes = !empty($xml['TailscaleAcceptRoutes']) && $xml['TailscaleAcceptRoutes'] === 'true' ? '-e TAILSCALE_ACCEPT_ROUTES=true' : '';
     if (!empty($xml['PostArgs'])) {
       $TS_postargs = '-e ORG_POSTARGS=' . escapeshellarg($xml['PostArgs']);
       $xml['PostArgs'] = '';
@@ -466,8 +470,8 @@ function xmlToCommand($xml, $create_paths=false) {
     $pid_limit = "";
   }
 
-  $cmd = sprintf($docroot.'/plugins/dynamix.docker.manager/scripts/docker create %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s',
-         $cmdName, $TS_entrypoint, $cmdNetwork, $cmdMyIP, $cmdCPUset, $pid_limit, $cmdPrivileged, implode(' -e ', $Variables), $TS_hostname, $TS_exitnode, $TS_exitnode_ip, $TS_lan_access, $TS_routes, $TS_ssh, $TS_userspace_networking, $TS_serve_funnel, $TS_serve_port, $TS_serve_local_path, $TS_serve_protocol, $TS_serve_protocol_port, $TS_serve_path, $TS_daemon_params, $TS_extra_params, $TS_state_dir, $TS_troubleshooting, $TS_postargs, implode(' -l ', $Labels), $TS_web_ui, $TS_hostname_label, implode(' -p ', $Ports), implode(' -v ', $Volumes), $TS_hook, $TS_cap, $TS_tundev, implode(' --device=', $Devices), $xml['ExtraParams'], escapeshellarg($xml['Repository']), $xml['PostArgs']);
+  $cmd = sprintf($docroot.'/plugins/dynamix.docker.manager/scripts/docker create %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s',
+         $cmdName, $TS_entrypoint, $cmdNetwork, $cmdMyIP, $cmdCPUset, $pid_limit, $cmdPrivileged, implode(' -e ', $Variables), $TS_hostname, $TS_exitnode, $TS_exitnode_ip, $TS_lan_access, $TS_routes, $TS_accept_routes, $TS_ssh, $TS_userspace_networking, $TS_serve_funnel, $TS_serve_port, $TS_serve_local_path, $TS_serve_protocol, $TS_serve_protocol_port, $TS_serve_path, $TS_daemon_params, $TS_extra_params, $TS_state_dir, $TS_troubleshooting, $TS_postargs, implode(' -l ', $Labels), $TS_web_ui, $TS_hostname_label, implode(' -p ', $Ports), implode(' -v ', $Volumes), $TS_hook, $TS_cap, $TS_tundev, implode(' --device=', $Devices), $xml['ExtraParams'], escapeshellarg($xml['Repository']), $xml['PostArgs']);
   return [preg_replace('/\s\s+/', ' ', $cmd), $xml['Name'], $xml['Repository']];
 }
 function stopContainer($name, $t=false, $echo=true) {
@@ -632,7 +636,7 @@ function execCommand($command, $echo=true) {
 
 function getXmlVal($xml, $element, $attr=null, $pos=0) {
   $xml = (is_file($xml)) ? simplexml_load_file($xml) : simplexml_load_string($xml);
-  $element = $xml->xpath("//$element")[$pos];
+  $element = $xml->xpath("//$element")[$pos] ?? null;
   return isset($element) ? (isset($element[$attr]) ? strval($element[$attr]) : strval($element)) : "";
 }
 
