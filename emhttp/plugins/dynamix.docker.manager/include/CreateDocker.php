@@ -1717,6 +1717,7 @@ function showTailscale(source) {
     $('.TSadvanced').hide();
     $('.TSroutes').hide();
     $('.TSacceptroutes').hide();
+    $('.TStroubleshooting').hide();
   } else {
     // reset these vals back to what they were in the XML
     $('#TSssh').val('<?php echo (!empty($xml) && !empty($xml['TailscaleSSH'])) ? $xml['TailscaleSSH'] : 'false'; ?>');
